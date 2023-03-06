@@ -1,8 +1,6 @@
 library(tidyverse)
 library(shiny)
 library(rsconnect)
-setwd("C:/Users/ajsko/OneDrive/Desktop/UW/WI 2023/Info201/ps06-shiny-app")
-  #rsconnect::deployApp('OneDrive/desktop/uw/WI 2023/info201/ps06-shiny-app/shinyapp.R')
   
   #
   # This is a Shiny web application. You can run the application by clicking
