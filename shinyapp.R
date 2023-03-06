@@ -38,12 +38,13 @@ ui <- fluidPage(
               Select the regions you are interested in.
               You see a monthly scatterplot and the corresponding trend lines."),
             checkboxInput("trend", "Display trend(s)"),
-            #radioButtons("colorpalette", "Palette:", )
-            
             uiOutput("checkboxes")
           ),
           mainPanel(
-            plotOutput("plot")
+            plotOutput("plot"),
+            textOutput("plotsum"),
+            textOutput("min"),
+            textOutput("max")
           )
         )
       ),
@@ -51,6 +52,8 @@ ui <- fluidPage(
       tabPanel("Tables", 
         sidebarLayout(
           sidebarPanel(
+            p("This panel displays average temperature by:\n",
+              em("months, years, decades")),
             uiOutput("tablechoices")
           ),
           mainPanel(
@@ -66,31 +69,70 @@ server <- function(input, output) {
     #temperatures <- read_delim("UAH-lower-troposphere-long.csv")
     temperatures <- temperatures %>% 
       mutate(time = year + month/12)
-
     regions <- unique(temperatures$region)
-    
     output$smallsample <- renderTable(
       temperatures %>% 
         sample_n(5)
     )
-    
     output$checkboxes <- renderUI({
       checkboxGroupInput(
-        "regions", "Select the region(s) to display",
+        "checkedregion", "Select the region(s) to display",
         choices = regions,
         selected = "globe"
       )
     })
-    
     temps <- reactive({
       temperatures %>% 
-        filter(region %in% input$selected)
+        filter(region %in% input$checkedregion)
     })
-    
     output$plot <- renderPlot({
-      p <- temps() %>% 
-        ggplot(aes(x=time, y=temp)) + geom_point()
-        
+      p <- ggplot(temps(), aes(x=time, y=temp, col = region)) + 
+        geom_point() +
+        labs(x = "Year", y = "Temperatures, Deviation from Baseline, Deg C", col = "Region")
+      if (input$trend) {
+        p <- p + geom_smooth()
+      }
+      p
+    })
+    output$plotsum <- renderText({
+      temps() %>% 
+        nrow() %>% 
+        paste("Total observations:", .)
+    })
+    output$min <- renderText({
+      min <- temps()$temp %>% 
+        min()
+      if(!is.infinite(min))
+        paste("Minimum temperature:", min)
+      else
+        ""
+    })
+    output$max <- renderText({
+      max <- temps()$temp %>% 
+        max()
+        if(!is.infinite(max))
+          paste("Minimum temperature:", max)
+      else
+        ""
+    })
+    output$tablechoices <- renderUI({
+      radioButtons("timeframe", strong("Average over:"), c("month", "year", "decade"), selected = "decade")
+    })
+    output$tables <- renderTable({
+      if (input$timeframe == "month") {
+        temperatures %>% 
+          group_by(month) %>% 
+          summarize(avgtemp = mean(temp))
+      } else if (input$timeframe == "year") {
+        temperatures %>% 
+          group_by(year) %>% 
+          summarize(avgtemp = mean(temp))
+      } else if (input$timeframe == "decade") {
+        temperatures %>% 
+          mutate(decade = year - year %% 10) %>% 
+          group_by(decade) %>% 
+          summarize(avgtemp = mean(temp))
+      }
     })
 }
   # Run the application 
