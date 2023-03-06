@@ -26,17 +26,17 @@ ui <- fluidPage(
           h2("Satellite Temperature Data from",
             strong("UAH")),
           p("Temperature temp is measured as deviation (deg C) from 1991-2020 baseline"),
-          p("The dataset contains 14310 observations and 5 variables 
-            \nHere is a small (random) sample of data:"),
+          p("The dataset contains 14310 observations and 5 variables.", 
+            strong("\nHere is a small (random) sample of data:")),
           tableOutput("smallsample")
         )
       ),
       tabPanel("Plots", 
         sidebarLayout(
           sidebarPanel(
-            p("You can analyze the global temperature for different regions.
-              Select the regions you are interested in.
-              You see a monthly scatterplot and the corresponding trend lines."),
+            p("Global temperatures for different regions!
+              Select the regions you want to see on the graph.
+              There will be a monthly scatterplot, and trend lines if the option is checked."),
             checkboxInput("trend", "Display trend(s)"),
             uiOutput("checkboxes")
           ),
@@ -48,7 +48,6 @@ ui <- fluidPage(
           )
         )
       ),
-              
       tabPanel("Tables", 
         sidebarLayout(
           sidebarPanel(
@@ -57,6 +56,7 @@ ui <- fluidPage(
             uiOutput("tablechoices")
           ),
           mainPanel(
+            textOutput("tablesum"),
             tableOutput("tables")
           )
         )
@@ -66,7 +66,7 @@ ui <- fluidPage(
   
   # Server
 server <- function(input, output) {
-    #temperatures <- read_delim("UAH-lower-troposphere-long.csv")
+    temperatures <- read_delim("UAH-lower-troposphere-long.csv")
     temperatures <- temperatures %>% 
       mutate(time = year + month/12)
     regions <- unique(temperatures$region)
@@ -110,17 +110,17 @@ server <- function(input, output) {
     output$max <- renderText({
       max <- temps()$temp %>% 
         max()
-        if(!is.infinite(max))
-          paste("Minimum temperature:", max)
+      if(!is.infinite(max))
+        paste("Minimum temperature:", max)
       else
         ""
     })
     output$tablechoices <- renderUI({
-      radioButtons("timeframe", strong("Average over:"), c("month", "year", "decade"), selected = "decade")
+      radioButtons("timeframe", strong("Average over:"), c("month", "year", "decade"), selected = "month")
     })
     output$tables <- renderTable({
       if (input$timeframe == "month") {
-        temperatures %>% 
+        monthtemps <- temperatures %>% 
           group_by(month) %>% 
           summarize(avgtemp = mean(temp))
       } else if (input$timeframe == "year") {
@@ -132,6 +132,28 @@ server <- function(input, output) {
           mutate(decade = year - year %% 10) %>% 
           group_by(decade) %>% 
           summarize(avgtemp = mean(temp))
+      }
+    })
+    output$tablesum <- renderText({
+      if (input$timeframe == "month") {
+        monthtemps <- temperatures %>% 
+          group_by(month) %>% 
+          summarize(avgtemp = mean(temp)) %>% 
+          nrow() %>% 
+          paste("Number of observations:", .)
+      } else if (input$timeframe == "year") {
+        temperatures %>% 
+          group_by(year) %>% 
+          summarize(avgtemp = mean(temp)) %>% 
+          nrow() %>% 
+          paste("Number of observations:", .)
+      } else if (input$timeframe == "decade") {
+        temperatures %>% 
+          mutate(decade = year - year %% 10) %>% 
+          group_by(decade) %>% 
+          summarize(avgtemp = mean(temp)) %>% 
+          nrow() %>% 
+          paste("Number of observations:", .)
       }
     })
 }
