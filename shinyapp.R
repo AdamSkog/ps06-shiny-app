@@ -109,7 +109,7 @@ server <- function(input, output) {
       max <- temps()$temp %>% 
         max()
       if(!is.infinite(max))
-        paste("Minimum temperature:", max)
+        paste("Maximum temperature:", max)
       else
         ""
     })
